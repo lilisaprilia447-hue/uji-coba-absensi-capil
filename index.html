@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Absensi Pegawai - Dukcapil Bangkep</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SheetJS Library for Excel (.xlsx) Export & Import -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col space-y-2"></div>
+
+    <!-- Header / Navbar -->
+    <header class="bg-blue-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-blue-800 p-2.5 rounded-xl border border-blue-700 shadow-inner">
+                    <i class="fa-solid fa-id-card-clip text-2xl text-blue-300"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg sm:text-xl font-bold tracking-tight">DISDUKCAPIL BANGKEP</h1>
+                    <p class="text-xs text-blue-200">Absensi Apel Pagi & Sore Pegawai</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4 bg-blue-950/50 px-4 py-2 rounded-xl border border-blue-800/60">
+                <div class="text-right">
+                    <div id="live-clock" class="text-sm font-semibold text-blue-100">00:00:00 WITA</div>
+                    <div id="live-date" class="text-xs text-blue-300">Minggu, 25 Oktober 2026</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 space-y-6">
+
+        <!-- Statistics Cards (Visible only after Admin login) -->
+        <div id="stats-section" class="hidden grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-blue-50 text-blue-600 rounded-xl"><i class="fa-solid fa-users text-xl"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">Total Hadir (Semua Pegawai)</p>
+                    <h3 id="stat-total" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><i class="fa-solid fa-user-tie text-xl"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">PNS</p>
+                    <h3 id="stat-pns" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl"><i class="fa-solid fa-user-shield text-xl"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">PPPK</p>
+                    <h3 id="stat-pppk" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex items-center space-x-4">
+                <div class="p-3 bg-purple-50 text-purple-600 rounded-xl"><i class="fa-solid fa-user-gear text-xl"></i></div>
+                <div>
+                    <p class="text-xs text-slate-500 font-medium">PPPK PW</p>
+                    <h3 id="stat-pw" class="text-xl font-bold text-slate-800">0</h3>
+                </div>
+            </div>
+        </div>
+
+        <!-- Attendance Action & Log Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Left Column: Form Absensi & Kamera (Bisa Diisi Oleh Seluruh Pegawai) -->
+            <div class="lg:col-span-1 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+                <div class="border-b border-slate-100 pb-4">
+                    <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-camera text-blue-600"></i> Form Absensi Pegawai
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-1">Isi data identitas, pilih sesi apel, dan ambil foto diri.</p>
+                </div>
+
+                <form id="attendance-form" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Nama Lengkap & Gelar</label>
+                        <input type="text" id="nama" required placeholder="Masukkan Nama Lengkap Pegawai" 
+                            class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Status Kepegawaian</label>
+                        <select id="status" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition">
+                            <option value="" disabled selected>Pilih Status Pegawai</option>
+                            <option value="PNS">PNS (Pegawai Negeri Sipil)</option>
+                            <option value="PPPK">PPPK</option>
+                            <option value="PPPK PW">PPPK PW (Paruh Waktu)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 uppercase mb-1">Sesi Absensi Apel</label>
+                        <select id="sesi-apel" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition">
+                            <option value="" disabled selected>Pilih Sesi Apel</option>
+                            <option value="Apel Pagi">Apel Pagi (07:30 - 08:30 WITA)</option>
+                            <option value="Apel Sore">Apel Sore (15:30 - 16:30 WITA)</option>
+                            <option value="Uji Coba Malam">Uji Coba Malam (20:21 - 21:40 WITA)</option>
+                            <option value="Uji Coba Dini Hari">Uji Coba Dini Hari (00:00 - 00:30 WITA)</option>
+                        </select>
+                        <div id="time-status-badge" class="mt-2 text-xs font-medium px-3 py-1.5 rounded-lg border bg-slate-50 text-slate-600 flex items-center gap-1.5">
+                            <i class="fa-solid fa-clock"></i> <span id="time-status-text">Silakan pilih sesi apel.</span>
+                        </div>
+                    </div>
+
+                    <!-- Camera Section -->
+                    <div class="space-y-2">
+                        <label class="block text-xs font-semibold text-slate-700 uppercase">Foto Diri (Swafoto)</label>
+                        <div class="relative bg-slate-900 rounded-xl overflow-hidden aspect-video flex items-center justify-center border border-slate-300">
+                            <video id="webcam" autoplay playsinline class="w-full h-full object-cover"></video>
+                            <canvas id="canvas" class="hidden"></canvas>
+                            <img id="photo-preview" src="" alt="Preview Foto" class="hidden w-full h-full object-cover absolute inset-0">
+                            <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 bg-slate-900/80">
+                                <i class="fa-solid fa-video-slash text-2xl mb-1"></i>
+                                <span class="text-xs">Kamera belum aktif</span>
+                            </div>
+                        </div>
+                        <div class="flex gap-2 pt-1">
+                            <button type="button" id="start-camera" class="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-power-off"></i> Nyalakan Kamera
+                            </button>
+                            <button type="button" id="capture-photo" disabled class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <i class="fa-solid fa-camera"></i> Ambil Foto
+                            </button>
+                        </div>
+                        <input type="hidden" id="photo-data" required>
+                    </div>
+
+                    <button type="submit" id="submit-btn" disabled class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-4 rounded-xl text-sm transition shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fa-solid fa-paper-plane"></i> Kirim Absensi
+                    </button>
+                </form>
+            </div>
+
+            <!-- Right Column: Admin Locked Log & Filter (Khusus Akses Admin) -->
+            <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6 flex flex-col relative overflow-hidden">
+                
+                <!-- Admin Lock Overlay (Hanya Admin yang bisa membuka) -->
+                <div id="admin-lock-overlay" class="absolute inset-0 bg-slate-900/80 backdrop-blur-md z-30 flex flex-col items-center justify-center p-6 text-center text-white space-y-4">
+                    <div class="w-16 h-16 bg-blue-600/20 text-blue-400 rounded-2xl flex items-center justify-center border border-blue-500/30 shadow-lg">
+                        <i class="fa-solid fa-user-shield text-3xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold">Akses Terkunci Admin</h3>
+                        <p class="text-xs text-slate-300 mt-1 max-w-sm">Riwayat seluruh kehadiran pegawai (satu per satu secara real-time) hanya dapat diakses oleh Administrator yang berwenang.</p>
+                    </div>
+                    <button id="btn-open-admin-modal" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-5 py-2.5 rounded-xl transition shadow-lg shadow-blue-600/30 flex items-center gap-2">
+                        <i class="fa-solid fa-key"></i> Login Admin
+                    </button>
+                </div>
+
+                <!-- Protected Log Area (Menampilkan Seluruh Rekap Pegawai Satu per Satu) -->
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-100 pb-4">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-clipboard-user text-blue-600"></i> Rekap Riwayat Seluruh Pegawai
+                            </h2>
+                            <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">KHUSUS ADMIN</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">Setiap entri data pegawai yang melakukan absensi masuk secara otomatis dan dapat dipantau satu per satu.</p>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap sm:flex-nowrap">
+                        <select id="filter-status" class="bg-slate-50 border border-slate-300 text-slate-700 text-xs rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ALL">Semua Status</option>
+                            <option value="PNS">PNS</option>
+                            <option value="PPPK">PPPK</option>
+                            <option value="PPPK PW">PPPK PW</option>
+                        </select>
+
+                        <button id="btn-export" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 whitespace-nowrap shadow-sm">
+                            <i class="fa-solid fa-file-excel"></i> Unduh Excel
+                        </button>
+                        <button id="btn-logout-admin" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-xl transition border border-slate-300" title="Keluar Mode Admin">
+                            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="flex-grow overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left border-collapse text-sm">
+                        <thead>
+                            <tr class="bg-slate-100/70 text-slate-600 text-xs uppercase font-semibold tracking-wider border-b border-slate-200">
+                                <th class="p-3">#</th>
+                                <th class="p-3">Foto Swafoto</th>
+                                <th class="p-3">Waktu & Tanggal</th>
+                                <th class="p-3">Nama Pegawai</th>
+                                <th class="p-3">Status</th>
+                                <th class="p-3 text-center">Aksi Admin</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendance-table-body" class="divide-y divide-slate-100">
+                            <!-- Populated dynamically via JS / Cloud -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-slate-400">
+                    <i class="fa-solid fa-folder-open text-4xl mb-2 text-slate-300"></i>
+                    <p class="text-sm font-medium">Belum ada data absensi pegawai yang tercatat.</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Admin Login Modal -->
+    <div id="admin-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+                    <i class="fa-solid fa-lock text-blue-600"></i> Authentikasi Admin
+                </h3>
+                <button id="admin-modal-close" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <form id="admin-login-form" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">NIP Admin</label>
+                    <input type="text" id="admin-nip" required placeholder="Masukkan NIP Admin" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">Password Admin</label>
+                    <input type="password" id="admin-password" required placeholder="Masukkan Password" class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-semibold transition mt-2">
+                    Buka Rekap Seluruh Pegawai
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom Modal for Details / Alerts -->
+    <div id="custom-modal" class="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                <h3 id="modal-title" class="font-bold text-slate-800 text-base">Detail Absensi</h3>
+                <button id="modal-close" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div id="modal-content" class="space-y-3 text-sm">
+                <!-- Content injected dynamically -->
+            </div>
+            <div class="pt-2 flex justify-end">
+                <button id="modal-btn-ok" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-xs font-semibold transition">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Cloud Integration Scripts -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Setup & Config
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'dukcapil-bangkep-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "dummy-key",
+            authDomain: "dummy.firebaseapp.com",
+            projectId: "dummy-project"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let attendanceData = [];
+        let unsubscribeRealtime = null;
+
+        // Firestore Public Collection Path
+        const publicCollectionRef = collection(db, 'artifacts', appId, 'public', 'data', 'absensi_pegawai');
+
+        // Initial Auth
+        async function initAuth() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (err) {
+                console.error("Auth Exception: ", err);
+            }
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (user) {
+                listenToRealtimeAttendance();
+            }
+        });
+
+        initAuth();
+
+        // Realtime Listener for Cloud Data
+        function listenToRealtimeAttendance() {
+            if (!currentUser) return;
+
+            if (unsubscribeRealtime) unsubscribeRealtime();
+
+            unsubscribeRealtime = onSnapshot(publicCollectionRef, (snapshot) => {
+                attendanceData = [];
+                snapshot.forEach((doc) => {
+                    attendanceData.push({
+                        docId: doc.id,
+                        ...doc.data()
+                    });
+                });
+
+                // Urutkan berdasarkan waktu paling baru
+                attendanceData.sort((a, b) => b.id - a.id);
+
+                // Render otomatis jika Admin sedang aktif
+                if (window.isAdminLoggedIn) {
+                    window.renderTable();
+                    window.updateStats();
+                }
+            }, (error) => {
+                console.error("Error listening to Firestore:", error);
+            });
+        }
+
+        // Global function exports to connect with standard JS code
+        window.saveAttendanceToCloud = async function(newRecord) {
+            if (!currentUser) {
+                window.showToast('Gagal terhubung ke server cloud.', 'error');
+                return false;
+            }
+            try {
+                await addDoc(publicCollectionRef, newRecord);
+                return true;
+            } catch (err) {
+                console.error("Gagal menyimpan ke Firestore:", err);
+                window.showToast('Gagal mengirim absensi ke cloud database.', 'error');
+                return false;
+            }
+        };
+
+        window.deleteAttendanceFromCloud = async function(docId) {
+            if (!currentUser) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'absensi_pegawai', docId);
+                await deleteDoc(docRef);
+                window.showToast('Record berhasil dihapus dari cloud database.', 'info');
+            } catch (err) {
+                console.error("Gagal menghapus data:", err);
+                window.showToast('Gagal menghapus data dari cloud.', 'error');
+            }
+        };
+
+        window.getCloudAttendanceData = () => attendanceData;
+    </script>
+
+    <!-- UI & Application Logic -->
+    <script>
+        // DOM Elements
+        const liveClock = document.getElementById('live-clock');
+        const liveDate = document.getElementById('live-date');
+        const webcam = document.getElementById('webcam');
+        const canvas = document.getElementById('canvas');
+        const photoPreview = document.getElementById('photo-preview');
+        const cameraPlaceholder = document.getElementById('camera-placeholder');
+        const startCameraBtn = document.getElementById('start-camera');
+        const capturePhotoBtn = document.getElementById('capture-photo');
+        const photoDataInput = document.getElementById('photo-data');
+        const attendanceForm = document.getElementById('attendance-form');
+        const sesiApelSelect = document.getElementById('sesi-apel');
+        const timeStatusBadge = document.getElementById('time-status-badge');
+        const timeStatusText = document.getElementById('time-status-text');
+        const submitBtn = document.getElementById('submit-btn');
+
+        // Admin DOM Elements
+        const adminLockOverlay = document.getElementById('admin-lock-overlay');
+        const btnOpenAdminModal = document.getElementById('btn-open-admin-modal');
+        const adminModal = document.getElementById('admin-modal');
+        const adminModalClose = document.getElementById('admin-modal-close');
+        const adminLoginForm = document.getElementById('admin-login-form');
+        const statsSection = document.getElementById('stats-section');
+        const btnLogoutAdmin = document.getElementById('btn-logout-admin');
+
+        const tableBody = document.getElementById('attendance-table-body');
+        const emptyState = document.getElementById('empty-state');
+        const filterStatus = document.getElementById('filter-status');
+        const btnExport = document.getElementById('btn-export');
+        const toastContainer = document.getElementById('toast-container');
+
+        // Modal Elements
+        const customModal = document.getElementById('custom-modal');
+        const modalTitle = document.getElementById('modal-title');
+        const modalContent = document.getElementById('modal-content');
+        const modalClose = document.getElementById('modal-close');
+        const modalBtnOk = document.getElementById('modal-btn-ok');
+
+        let mediaStream = null;
+        window.isAdminLoggedIn = false;
+
+        // Kredensial Admin Resmi
+        const ADMIN_NIP = "200209072025062006";
+        const ADMIN_PASS = "Dukcapil7207";
+
+        // Live Clock & Time Check
+        function updateClock() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            liveClock.textContent = `${hours}:${minutes}:${seconds} WITA`;
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            liveDate.textContent = now.toLocaleDateString('id-ID', options);
+
+            validateApelTime();
+        }
+        setInterval(updateClock, 1000);
+
+        // Validasi Jam Apel Pegawai
+        function validateApelTime() {
+            const selectedSession = sesiApelSelect.value;
+            if (!selectedSession) return;
+
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+            let isAllowed = false;
+            let timeMessage = "";
+
+            if (selectedSession === "Apel Pagi") {
+                // Sesi Apel Pagi: 07:30 - 08:30 WITA (450 - 510 menit)
+                const start = 7 * 60 + 30;   // 07:30 WITA
+                const end = 8 * 60 + 30;     // 08:30 WITA
+                
+                if (currentMinutes >= start && currentMinutes <= end) {
+                    isAllowed = true;
+                    timeMessage = "Sesi Apel Pagi Dibuka (07:30 - 08:30 WITA)";
+                } else {
+                    timeMessage = "Sesi Apel Pagi Ditutup. (Hanya 07:30 - 08:30 WITA)";
+                }
+            } else if (selectedSession === "Apel Sore") {
+                // Sesi Apel Sore: 15:30 - 16:30 WITA (930 - 990 menit)
+                const start = 15 * 60 + 30;  // 15:30 WITA
+                const end = 16 * 60 + 30;    // 16:30 WITA
+                
+                if (currentMinutes >= start && currentMinutes <= end) {
+                    isAllowed = true;
+                    timeMessage = "Sesi Apel Sore Dibuka (15:30 - 16:30 WITA)";
+                } else {
+                    timeMessage = "Sesi Apel Sore Ditutup. (Hanya 15:30 - 16:30 WITA)";
+                }
+            } else if (selectedSession === "Uji Coba Malam") {
+                // Sesi Uji Coba Malam: 20:21 - 21:40 WITA (1221 - 1300 menit)
+                const start = 20 * 60 + 21;  // 20:21 WITA
+                const end = 21 * 60 + 40;    // 21:40 WITA
+
+                if (currentMinutes >= start && currentMinutes <= end) {
+                    isAllowed = true;
+                    timeMessage = "Sesi Uji Coba Malam Dibuka (20:21 - 21:40 WITA)";
+                } else {
+                    timeMessage = "Sesi Uji Coba Malam Ditutup. (Hanya 20:21 - 21:40 WITA)";
+                }
+            } else if (selectedSession === "Uji Coba Dini Hari") {
+                // Sesi Uji Coba Dini Hari: 00:00 - 00:30 WITA (0 - 30 menit)
+                const start = 0;             // 00:00 WITA
+                const end = 30;              // 00:30 WITA
+
+                if (currentMinutes >= start && currentMinutes <= end) {
+                    isAllowed = true;
+                    timeMessage = "Sesi Uji Coba Dini Hari Dibuka (00:00 - 00:30 WITA)";
+                } else {
+                    timeMessage = "Sesi Uji Coba Dini Hari Ditutup. (Hanya 00:00 - 00:30 WITA)";
+                }
+            }
+
+            if (isAllowed) {
+                timeStatusBadge.className = "mt-2 text-xs font-medium px-3 py-1.5 rounded-lg border bg-emerald-50 text-emerald-700 border-emerald-200 flex items-center gap-1.5";
+                timeStatusText.innerHTML = `<i class="fa-solid fa-circle-check"></i> ${timeMessage}`;
+                submitBtn.removeAttribute('disabled');
+            } else {
+                timeStatusBadge.className = "mt-2 text-xs font-medium px-3 py-1.5 rounded-lg border bg-rose-50 text-rose-700 border-rose-200 flex items-center gap-1.5";
+                timeStatusText.innerHTML = `<i class="fa-solid fa-circle-xmark"></i> ${timeMessage}`;
+                submitBtn.setAttribute('disabled', 'true');
+            }
+        }
+
+        sesiApelSelect.addEventListener('change', validateApelTime);
+
+        // Toast Notification System
+        window.showToast = function(message, type = 'success') {
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-rose-600' : 'bg-blue-600';
+            const icon = type === 'success' ? 'fa-circle-check' : type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-info';
+            
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg flex items-center space-x-3 text-sm font-medium transform translate-y-2 opacity-0 transition-all duration-300 z-50`;
+            toast.innerHTML = `<i class="fa-solid ${icon} text-lg"></i><span>${message}</span>`;
+            
+            toastContainer.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-2', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
+
+        // Kamera Logic
+        startCameraBtn.addEventListener('click', async () => {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 }, audio: false });
+                webcam.srcObject = mediaStream;
+                cameraPlaceholder.classList.add('hidden');
+                photoPreview.classList.add('hidden');
+                capturePhotoBtn.removeAttribute('disabled');
+                startCameraBtn.innerHTML = '<i class="fa-solid fa-check"></i> Kamera Aktif';
+                startCameraBtn.classList.remove('bg-slate-200', 'text-slate-700');
+                startCameraBtn.classList.add('bg-emerald-100', 'text-emerald-700');
+                showToast('Kamera berhasil diaktifkan.', 'info');
+            } catch (err) {
+                console.error(err);
+                showToast('Gagal mengakses kamera. Periksa izin perangkat.', 'error');
+            }
+        });
+
+        // Ambil Swafoto
+        capturePhotoBtn.addEventListener('click', () => {
+            if (!mediaStream) return;
+            canvas.width = webcam.videoWidth || 640;
+            canvas.height = webcam.videoHeight || 480;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(webcam, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6); // Compress
+            
+            photoDataInput.value = dataUrl;
+            photoPreview.src = dataUrl;
+            photoPreview.classList.remove('hidden');
+            showToast('Foto berhasil diambil!');
+        });
+
+        // Input Form Absensi oleh Pegawai
+        attendanceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const nama = document.getElementById('nama').value.trim();
+            const status = document.getElementById('status').value;
+            const sesi = sesiApelSelect.value;
+            const photo = photoDataInput.value;
+
+            if (!photo) {
+                showToast('Harap ambil foto diri terlebih dahulu!', 'error');
+                return;
+            }
+
+            submitBtn.setAttribute('disabled', 'true');
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Data...';
+
+            const now = new Date();
+            const dayName = now.toLocaleDateString('id-ID', { weekday: 'long' });
+            const dateStr = now.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' });
+            const timeStr = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') + ' WITA';
+
+            const newRecord = {
+                id: now.getTime(),
+                nama,
+                status,
+                sesi,
+                hari: dayName,
+                date: dateStr,
+                time: timeStr,
+                photo
+            };
+
+            // Simpan Data ke Cloud Server Realtime
+            const success = await window.saveAttendanceToCloud(newRecord);
+
+            if (success) {
+                attendanceForm.reset();
+                photoPreview.classList.add('hidden');
+                photoDataInput.value = '';
+                timeStatusBadge.className = "mt-2 text-xs font-medium px-3 py-1.5 rounded-lg border bg-slate-50 text-slate-600 flex items-center gap-1.5";
+                timeStatusText.textContent = "Silakan pilih sesi apel.";
+                showToast(`Absensi ${sesi} atas nama ${nama} berhasil dikirim ke server!`);
+            }
+
+            submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Kirim Absensi';
+        });
+
+        // Status Badge Styling Helper
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'PNS': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                case 'PPPK': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+                case 'PPPK PW': return 'bg-purple-50 text-purple-700 border-purple-200';
+                default: return 'bg-slate-50 text-slate-700 border-slate-200';
+            }
+        }
+
+        // Authentikasi Admin
+        btnOpenAdminModal.addEventListener('click', () => {
+            adminModal.classList.remove('hidden');
+            adminModal.classList.add('flex');
+        });
+
+        adminModalClose.addEventListener('click', () => {
+            adminModal.classList.add('hidden');
+            adminModal.classList.remove('flex');
+        });
+
+        adminLoginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const nip = document.getElementById('admin-nip').value.trim();
+            const pass = document.getElementById('admin-password').value.trim();
+
+            if (nip === ADMIN_NIP && pass === ADMIN_PASS) {
+                window.isAdminLoggedIn = true;
+                adminModal.classList.add('hidden');
+                adminModal.classList.remove('flex');
+                adminLockOverlay.classList.add('hidden');
+                statsSection.classList.remove('hidden');
+                adminLoginForm.reset();
+                window.renderTable();
+                window.updateStats();
+                showToast('Login Admin Berhasil! Rekap terpusat seluruh pegawai ditampilkan.', 'success');
+            } else {
+                showToast('NIP atau Password Admin Salah!', 'error');
+            }
+        });
+
+        btnLogoutAdmin.addEventListener('click', () => {
+            window.isAdminLoggedIn = false;
+            adminLockOverlay.classList.remove('hidden');
+            statsSection.classList.add('hidden');
+            showToast('Telah keluar dari Mode Admin.', 'info');
+        });
+
+        // Tampilkan Tabel Rekap Seluruh Pegawai Dari Cloud Database (Khusus Admin)
+        window.renderTable = function() {
+            if (!window.isAdminLoggedIn) return;
+
+            const data = window.getCloudAttendanceData();
+            const filterVal = filterStatus.value;
+            const filteredData = data.filter(item => filterVal === 'ALL' || item.status === filterVal);
+
+            tableBody.innerHTML = '';
+            if (filteredData.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+                emptyState.classList.remove('flex');
+            }
+
+            filteredData.forEach((item, index) => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50/80 transition border-b border-slate-100 text-xs';
+
+                tr.innerHTML = `
+                    <td class="p-3 font-semibold text-slate-400">${index + 1}</td>
+                    <td class="p-3">
+                        <img src="${item.photo || 'https://placehold.co/100x100/e2e8f0/475569?text=Swafoto'}" alt="Foto" class="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-sm cursor-pointer hover:opacity-80 transition" onclick="viewPhoto('${item.photo}', '${item.nama}')" title="Klik memperbesar foto pegawai">
+                    </td>
+                    <td class="p-3">
+                        <div class="font-bold text-slate-800">${item.hari || 'Hari'}, ${item.time || '-'}</div>
+                        <div class="text-[11px] text-blue-600 font-medium">${item.sesi || '-'}</div>
+                        <div class="text-[10px] text-slate-400">${item.date || '-'}</div>
+                    </td>
+                    <td class="p-3 font-semibold text-slate-800">${item.nama}</td>
+                    <td class="p-3">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-bold border ${getStatusBadge(item.status)}">${item.status}</span>
+                    </td>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="deleteRecord('${item.docId}')" class="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition" title="Hapus Data Record Ini">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        };
+
+        filterStatus.addEventListener('change', window.renderTable);
+
+        // Update Statistik Dashboard Admin
+        window.updateStats = function() {
+            if (!window.isAdminLoggedIn) return;
+            const data = window.getCloudAttendanceData();
+            document.getElementById('stat-total').textContent = data.length;
+            document.getElementById('stat-pns').textContent = data.filter(i => i.status === 'PNS').length;
+            document.getElementById('stat-pppk').textContent = data.filter(i => i.status === 'PPPK').length;
+            document.getElementById('stat-pw').textContent = data.filter(i => i.status === 'PPPK PW').length;
+        };
+
+        // Modal View Foto
+        window.viewPhoto = function(photoUrl, namaPegawai) {
+            modalTitle.textContent = `Foto Swafoto Absensi - ${namaPegawai}`;
+            modalContent.innerHTML = `
+                <div class="flex justify-center bg-slate-900 rounded-xl overflow-hidden p-2">
+                    <img src="${photoUrl || 'https://placehold.co/400x300/e2e8f0/475569?text=Tidak+Ada+Foto'}" alt="Foto ${namaPegawai}" class="max-h-80 object-contain rounded-lg">
+                </div>
+            `;
+            customModal.classList.remove('hidden');
+            customModal.classList.add('flex');
+        };
+
+        // Hapus Record Pegawai dari Cloud Database
+        window.deleteRecord = function(docId) {
+            if (!docId) return;
+            window.deleteAttendanceFromCloud(docId);
+        };
+
+        // Close Modal
+        modalClose.addEventListener('click', () => {
+            customModal.classList.add('hidden');
+            customModal.classList.remove('flex');
+        });
+        modalBtnOk.addEventListener('click', () => {
+            customModal.classList.add('hidden');
+            customModal.classList.remove('flex');
+        });
+
+        // Export to Excel Function
+        function exportToExcel(filename = `Rekap_Absensi_Master_Dukcapil_Bangkep.xlsx`) {
+            const data = window.getCloudAttendanceData();
+            if (data.length === 0) {
+                showToast('Tidak ada data absensi untuk diexport!', 'error');
+                return;
+            }
+
+            const exportRows = data.map((item, index) => ({
+                "No": index + 1,
+                "Nama Lengkap": item.nama,
+                "Status Kepegawaian": item.status,
+                "Sesi Apel": item.sesi,
+                "Hari": item.hari,
+                "Tanggal": item.date,
+                "Waktu Absen": item.time
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(exportRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Absensi Master");
+            XLSX.writeFile(workbook, filename);
+            showToast('File Excel Rekap Seluruh Pegawai berhasil diunduh!', 'success');
+        }
+
+        btnExport.addEventListener('click', () => {
+            const todayKey = new Date().toISOString().split('T')[0];
+            exportToExcel(`Rekap_Master_Absensi_${todayKey}.xlsx`);
+        });
+    </script>
+</body>
+</html>
